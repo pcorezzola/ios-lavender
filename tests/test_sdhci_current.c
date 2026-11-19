@@ -624,6 +624,12 @@ test_cache(void)
 	assert(sdhci_synchronize_cache() == ETIMEDOUT);
 	assert(se.write_pending && m.flushes == 0 && !m.locked);
 	reset_mock();
+	set_ext_csd(0);
+	assert(sdhci_record_cache_state() == 0);
+	m.flush_stuck = true;
+	assert(write_pio_locked(100, 1, card_data) == ETIMEDOUT);
+	assert(m.command13 == 0 && m.now < 2100000000ULL);
+	reset_mock();
 	se.ready = false;
 	assert(sdhci_synchronize_cache() == ENXIO && m.commands == 0 && !m.locked);
 }

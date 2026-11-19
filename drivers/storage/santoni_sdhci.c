@@ -1624,7 +1624,7 @@ sdhci_data_matrix(uint32_t *width)
  * The controller's transfer-complete interrupt only proves the FIFO moved the
  * bytes; the card may still be programming and hold DAT0 low. Sending the next
  * CMD24/CMD25 into that state times out on this eMMC. Poll DAT0 and require
- * TRAN + READY_FOR_DATA via CMD13, like sdhci_synchronize_cache().
+ * TRAN + READY_FOR_DATA via CMD13; a block uses the CMD6 busy bound.
  */
 static int
 sdhci_wait_write_ready(void)
@@ -1632,7 +1632,7 @@ sdhci_wait_write_ready(void)
 	uint64_t deadline;
 	uint32_t r1 = 0;
 
-	nanoseconds_to_deadline(CACHE_FLUSH_TIMEOUT_NS, &deadline);
+	nanoseconds_to_deadline(CMD6_BUSY_TIMEOUT_NS, &deadline);
 	delay(1000); /* let the card assert busy after Command Complete */
 	for (;;) {
 		uint32_t ps = hc_rd(SDHCI_PRESENT_STATE);
