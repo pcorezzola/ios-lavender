@@ -1621,6 +1621,44 @@ sdhci_data_matrix(uint32_t *width)
 }
 
 /*
+ * The controller's transfer-complete interrupt only proves the FIFO moved the
+ * bytes; the card may still be programming and hold DAT0 low. Sending the next
+ * CMD24/CMD25 into that state times out on this eMMC. Poll DAT0 and require
+ * TRAN + READY_FOR_DATA via CMD13, like sdhci_synchronize_cache().
+ */
+static int
+sdhci_wait_write_ready(void)
+{
+	uint64_t deadline;
+	uint32_t r1 = 0;
+
+	nanoseconds_to_deadline(CACHE_FLUSH_TIMEOUT_NS, &deadline);
+	delay(1000); /* let the card assert busy after Command Complete */
+	for (;;) {
+		uint32_t ps = hc_rd(SDHCI_PRESENT_STATE);
+
+		if (mach_absolute_time() >= deadline)
+			return ETIMEDOUT;
+		if (!(ps & (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT)) &&
+		    (ps & SDHCI_DATA_0_LVL_MASK)) {
+			int error = sdhci_cmd(13, se.rca << 16, 0,
+			    SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC |
+			    SDHCI_CMD_INDEX, &r1);
+			if (error)
+				return error;
+			if (r1 & (SDHCI_R1_SWITCH_ERROR |
+			    SDHCI_R1_ILLEGAL_COMMAND | SDHCI_R1_ERROR))
+				return EIO;
+			if ((r1 & SDHCI_R1_STATE_MASK) ==
+			    (SDHCI_R1_STATE_TRAN << 9) &&
+			    (r1 & SDHCI_R1_READY_FOR_DATA))
+				return 0;
+		}
+		delay(1000);
+	}
+}
+
+/*
  * Polled PIO write of count 512-byte blocks. For count == 1, CMD24 is used.
  * For count > 1, CMD25 is used with AUTO_CMD12.
  */
@@ -1676,6 +1714,13 @@ sdhci_write_pio(uint32_t lba, uint32_t count, const void *buf)
 	}
 	error = sdhci_wait_transfer_complete(tag, true, index == 25);
 	if (error) {
+		sdhci_recover(index == 25);
+		return error;
+	}
+	error = sdhci_wait_write_ready();
+	if (error) {
+		printf("WHYRED SDHCI: %s: card not ready after write (%d)\n",
+		    tag, error);
 		sdhci_recover(index == 25);
 		return error;
 	}

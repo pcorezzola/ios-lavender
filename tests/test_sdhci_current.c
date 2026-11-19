@@ -386,6 +386,34 @@ reset_mock(void)
 	store32(CORE_GENERICS, 1u);
 }
 
+/*
+ * Production writes always hold santoni_sdhci_lock: strategy() takes it via
+ * santoni_sdhci_bounce_lock() and the log flusher locks explicitly. The new
+ * post-write CMD13 is part of that same critical section, so the tests must
+ * model it instead of calling the PIO entry points unlocked.
+ */
+static int
+write_pio_locked(uint32_t lba, uint32_t count, const void *buf)
+{
+	int error;
+
+	lck_mtx_lock(&santoni_sdhci_lock);
+	error = sdhci_write_pio(lba, count, buf);
+	lck_mtx_unlock(&santoni_sdhci_lock);
+	return error;
+}
+
+static int
+write_blocks_locked(uint64_t lba, uint32_t count, const void *buf)
+{
+	int error;
+
+	lck_mtx_lock(&santoni_sdhci_lock);
+	error = santoni_sdhci_write_blocks(lba, count, buf);
+	lck_mtx_unlock(&santoni_sdhci_lock);
+	return error;
+}
+
 static void
 test_layout(void)
 {
@@ -509,13 +537,13 @@ test_writes_and_bounds(void)
 	reset_mock();
 	m.no_irq = true;
 	m.word_gap = 10000;
-	assert(sdhci_write_pio(100, 2, card_data) == 0);
+	assert(write_pio_locked(100, 2, card_data) == 0);
 	assert(m.fifo_writes == 256 && m.overruns == 0);
 	assert(!memcmp(written, card_data, sizeof(written)));
 	reset_mock();
 	m.failure_status = SDHCI_INT_DATA_CRC;
 	m.fail_after = 31;
-	assert(sdhci_write_pio(100, 1, card_data) == EIO);
+	assert(write_pio_locked(100, 1, card_data) == EIO);
 	assert(m.fifo_writes == 31 && m.overruns == 0);
 	reset_mock();
 	assert(santoni_sdhci_write_blocks(100, 1, card_data) == EROFS);
@@ -524,7 +552,7 @@ test_writes_and_bounds(void)
 	assert(santoni_sdhci_write_blocks(99, 1, card_data) == EPERM);
 	assert(santoni_sdhci_write_blocks(107, 2, card_data) == EPERM);
 	assert(m.commands == 0);
-	assert(santoni_sdhci_write_blocks(107, 1, card_data) == 0);
+	assert(write_blocks_locked(107, 1, card_data) == 0);
 	assert(m.fifo_writes == 128);
 }
 
@@ -551,8 +579,9 @@ test_cache(void)
 	assert(sdhci_record_cache_state() == 0 && se.cache_valid);
 	assert(sdhci_synchronize_cache() == 0 && m.flushes == 0);
 	m.write_busy_ns = 200000000u;
-	assert(sdhci_write_pio(100, 1, card_data) == 0 && se.write_pending);
-	assert(m.now < m.busy_until);
+	assert(write_pio_locked(100, 1, card_data) == 0 && se.write_pending);
+	/* The write path now waits for DAT0 + CMD13 before returning. */
+	assert(m.now >= m.ready_until);
 	assert(sdhci_synchronize_cache() == 0);
 	assert(m.now >= m.ready_until && m.command13 > 0 && m.flushes == 0);
 	assert(!se.write_pending && !m.locked);
@@ -590,7 +619,7 @@ test_cache(void)
 	reset_mock();
 	set_ext_csd(0);
 	assert(sdhci_record_cache_state() == 0);
-	assert(sdhci_write_pio(100, 1, card_data) == 0 && se.write_pending);
+	assert(write_pio_locked(100, 1, card_data) == 0 && se.write_pending);
 	m.flush_stuck = true;
 	assert(sdhci_synchronize_cache() == ETIMEDOUT);
 	assert(se.write_pending && m.flushes == 0 && !m.locked);
