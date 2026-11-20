@@ -1,7 +1,14 @@
 diff --git a/bsd/dev/santoni_sdhci.c b/bsd/dev/santoni_sdhci.c
 --- a/bsd/dev/santoni_sdhci.c
 +++ b/bsd/dev/santoni_sdhci.c
-@@ -4599,7 +4599,7 @@ santoni_sdhci_init(void)
+@@ -63,5 +63,5 @@
+ static void santoni_log_start(void);
+ static void santoni_fb_test(void);
+-#if defined(ARM64_BOARD_CONFIG_WHYRED)
++#if defined(ARM64_BOARD_CONFIG_WHYRED) || defined(ARM64_BOARD_CONFIG_LAVENDER)
+ extern int santoni_touch_probe(void);
+ #endif
+@@ -4599,7 +4600,7 @@ santoni_sdhci_init(void)
  	santoni_log_start();
  	/* After the log: the WHYRED FB lines belong in the SYSTEM ring. */
  	santoni_fb_test();

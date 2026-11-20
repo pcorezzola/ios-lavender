@@ -62,7 +62,7 @@
 
 static void santoni_log_start(void);
 static void santoni_fb_test(void);
-#if defined(ARM64_BOARD_CONFIG_WHYRED)
+#if defined(ARM64_BOARD_CONFIG_WHYRED) || defined(ARM64_BOARD_CONFIG_LAVENDER)
 extern int santoni_touch_probe(void);
 #endif
 
