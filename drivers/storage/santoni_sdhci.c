@@ -4599,7 +4599,7 @@ santoni_sdhci_init(void)
 	santoni_log_start();
 	/* After the log: the WHYRED FB lines belong in the SYSTEM ring. */
 	santoni_fb_test();
-#if defined(ARM64_BOARD_CONFIG_WHYRED)
+#if defined(ARM64_BOARD_CONFIG_WHYRED) || defined(ARM64_BOARD_CONFIG_LAVENDER)
 	/* Boot-arg sweetouchi2c=1: does the touch controller answer at all? */
 	santoni_touch_probe();
 #endif

@@ -1,6 +1,7 @@
-/* The kernel touch source is compiled separately, with WHYRED disabled.
- * Regression for CI 42348926676: the test's errno.h cannot supply ENXIO to
- * another translation unit that forgot its own common BSD errno include. */
+/* The kernel touch source is compiled separately, with WHYRED and LAVENDER
+ * disabled, so it must still provide the unsupported-board stub. Regression
+ * for CI 42348926676: the test's errno.h cannot supply ENXIO to another
+ * translation unit that forgot its own common BSD errno include. */
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

@@ -49,9 +49,9 @@ case "$OUT" in
 	*)  "./$OUT/test_gic_wait" ;;
 esac
 
-echo "== LAVENDER: complete touch stub TU and shared prototype =="
+echo "== unsupported board: complete touch stub TU and shared prototype =="
 "$CC" -O2 -Wall -Wextra -Werror -Wmissing-prototypes -Wredundant-decls \
-	-DARM64_BOARD_CONFIG_LAVENDER=1 "$OUT/kernel-mock/santoni_touch.c" \
+	-DARM64_BOARD_CONFIG_SANTONI=1 "$OUT/kernel-mock/santoni_touch.c" \
 	tests/test_santoni_touch_stub.c -o "$OUT/test_santoni_touch_stub"
 case "$OUT" in
 	/*) "$OUT/test_santoni_touch_stub" ;;

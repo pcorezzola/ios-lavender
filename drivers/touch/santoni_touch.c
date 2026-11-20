@@ -44,7 +44,7 @@
  * The probe is read-mostly on purpose: with no reset pulse it does not touch
  * GPIO 66/67 at all, so the log still describes the state ABL handed over.
  */
-#if defined(ARM64_BOARD_CONFIG_WHYRED)
+#if defined(ARM64_BOARD_CONFIG_WHYRED) || defined(ARM64_BOARD_CONFIG_LAVENDER)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -702,7 +702,11 @@ dsx_touch_test(const struct dsx_funcs *f, uint32_t seconds)
  */
 #define WHYRED_FB_PHYS		0x9d400000ULL
 #define WHYRED_FB_WIDTH		1080u
+#if defined(ARM64_BOARD_CONFIG_LAVENDER)
+#define WHYRED_FB_HEIGHT	2340u
+#else
 #define WHYRED_FB_HEIGHT	2160u
+#endif
 #define WHYRED_FB_STRIDE	4320u	/* bytes, 32 bpp */
 
 static uint32_t
@@ -924,7 +928,7 @@ santoni_touch_probe(void)
 	return acks ? 0 : ENXIO;
 }
 
-#else /* !ARM64_BOARD_CONFIG_WHYRED */
+#else /* !ARM64_BOARD_CONFIG_WHYRED && !ARM64_BOARD_CONFIG_LAVENDER */
 
 int
 santoni_touch_probe(void)
@@ -932,4 +936,4 @@ santoni_touch_probe(void)
 	return ENXIO;
 }
 
-#endif /* ARM64_BOARD_CONFIG_WHYRED */
+#endif /* ARM64_BOARD_CONFIG_WHYRED || ARM64_BOARD_CONFIG_LAVENDER */
